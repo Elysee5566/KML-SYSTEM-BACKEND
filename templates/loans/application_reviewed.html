@@ -8,6 +8,9 @@
     team.
   </p>
   <p>We will notify you about the next steps soon.</p>
+  {% if reason %}
+  <p><strong>Reason:</strong> {{ reason }}</p>
+  {% endif %}
   <p><a href="{{ dashboard_url }}" class="btn">Go to Dashboard</a></p>
 </div>
 {% endblock %}

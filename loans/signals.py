@@ -121,6 +121,7 @@ def public_application_handler(sender, instance, created, **kwargs):
                 context={
                     "name": instance.full_name,
                     "role":"client",
+                    
                     "amount": f"{instance.requested_amount:,.0f}",
                     "loan_type": instance.loan_type.name if instance.loan_type else "N/A",
                     "dashboard_url": dashboard_url,
@@ -163,7 +164,8 @@ def public_application_handler(sender, instance, created, **kwargs):
             template_name=template,
             context={
                 "name": instance.full_name,
-                "amount": f"{instance.requested_amount:,.0f}",
+                "amount": instance.requested_amount,
+                "reason":instance.comment if instance.comment else None,
                 "loan_type": instance.loan_type.name if instance.loan_type else "N/A",
                 "status": instance.status,
                 "dashboard_url": dashboard_url,
@@ -175,9 +177,10 @@ def public_application_handler(sender, instance, created, **kwargs):
             template_name=template,
             context={
                 "name": instance.full_name,
-                "amount": f"{instance.requested_amount:,.0f}",
+                "amount": instance.requested_amount,
                 "loan_type": instance.loan_type.name if instance.loan_type else "N/A",
                 "status": instance.status,
+                "reason":instance.comment if instance.comment else None,
                 "dashboard_url": dashboard_url,
             },
         )
@@ -208,9 +211,10 @@ def loan_application_post_save(sender, instance, created, **kwargs):
 
     context = {
         "name": client.names if client else "Client",
-        "amount": f"{instance.requested_amount:,.0f}",
+        "amount": instance.requested_amount,
         "loan_type": instance.loan_type.name if instance.loan_type else "N/A",
         "status": instance.status,
+        "reason": instance.comment if instance.comment else None,
         "dashboard_url": dashboard_url,
     }
 
@@ -295,7 +299,7 @@ def loan_application_post_save(sender, instance, created, **kwargs):
     # =========================================
     elif instance.status == "rejected":
 
-        print("SENDING REJECTED EMAIL")
+        print("SENDING REJECTED EMAIL to ",client.email)
 
         if client and client.email:
             send_email(

@@ -166,6 +166,7 @@ class LoanPayment(models.Model):
 
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
     payment_proof = models.FileField(upload_to="payment_proofs/",null=True,blank=True)
+    rejection_reason = models.TextField(blank=True,null=True)
     payment_date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
