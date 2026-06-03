@@ -8,7 +8,7 @@ from .models import Loan, PublicLoanApplication, LoanApplication,LoanPayment
 from users.utils import send_email
 
 dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
-payment_url = f"{settings.FRONTEND_URL}/payments"
+payment_url = f"{settings.FRONTEND_URL}/dashboard/payments"
 
 @receiver(pre_save, sender=Loan)
 def loan_store_previous_state(sender, instance, **kwargs):

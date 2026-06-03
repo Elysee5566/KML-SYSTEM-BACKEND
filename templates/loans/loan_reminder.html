@@ -1,12 +1,11 @@
 <!-- templates/emails/loan_reminder.html -->
-{% extends "emails/base.html" %}
-
-{% block content %}
+{% extends "emails/base.html" %} {% block content %}
 
 <div class="title">Loan Repayment Reminder</div>
 
 <p class="text">
-  Dear {{ client_name }}, this is a reminder that your loan repayment is approaching.
+  Dear {{ client_name }}, this is a reminder that your loan repayment is
+  approaching.
 </p>
 
 <div class="card">
@@ -24,14 +23,18 @@
     <span class="label">Remaining Balance:</span>
     <span class="value"> {{ balance }} RWF</span>
   </div>
+  <div class="row">
+    <span class="label">Momo</span>
+    <span class="value">1429075</span>
+  </div>
+  <div class="row">
+    <span class="label">Name</span>
+    <span class="value">Kigali MicroLoans Ltd</span>
+  </div>
 </div>
 
-<p class="text">
-  Please ensure timely repayment to avoid penalties.
-</p>
+<p class="text">Please ensure timely repayment to avoid penalties.</p>
 
-<a href="{{ payment_url }}" class="button">
-  Make Payment
-</a>
+<a href="{{ payment_url }}" class="button"> Make Payment </a>
 
 {% endblock %}

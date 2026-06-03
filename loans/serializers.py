@@ -106,7 +106,8 @@ class LoanSerializer(serializers.ModelSerializer):
             old_remaining = instance.remaining_balance
 
             paid_amount = old_total - old_remaining
-
+            old_penalty = instance.penalty_amount
+            
             # =========================
             # UPDATE FIELDS
             # =========================
@@ -114,6 +115,12 @@ class LoanSerializer(serializers.ModelSerializer):
                 "loan_amount",
                 instance.loan_amount
             )
+            instance.penalty_amount = validated_data.get(
+                "penalty_amount",
+                instance.penalty_amount
+            )
+            new_penalty = instance.penalty_amount
+            # penalty_diff = instance.penalty_amount - old_penalty
 
             instance.interest_amount = validated_data.get(
                 "interest_amount",
@@ -124,7 +131,7 @@ class LoanSerializer(serializers.ModelSerializer):
             # RECALCULATE TOTAL
             # =========================
             instance.total_repayment = (
-                instance.loan_amount + instance.interest_amount
+                instance.loan_amount + instance.interest_amount+ new_penalty
             )
 
             # =========================
@@ -133,7 +140,7 @@ class LoanSerializer(serializers.ModelSerializer):
             instance.remaining_balance = (
                 instance.total_repayment - paid_amount
             )
-
+            # instance.remaining_balance += penalty_diff
             if instance.remaining_balance < 0:
                 instance.remaining_balance = 0
 

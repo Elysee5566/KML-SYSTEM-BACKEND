@@ -573,7 +573,7 @@ class LoanApplicationViewSet(ModelViewSet):
             send_mail(
                 subject="Your Loan Contract Has Been Sent",
                 message=f"""
-                Dear {application.client_names},
+                Dear {application.client.names},
 
                 Your loan contract has been prepared and is now available.
 
@@ -693,7 +693,7 @@ class LoanApplicationViewSet(ModelViewSet):
                     send_mail(
                     subject="Your Loan Has been approved",
                     message=f"""
-                    Dear {application.client_names},
+                    Dear {application.client.names},
 
                     Your loan  has been approved and is now active.
 

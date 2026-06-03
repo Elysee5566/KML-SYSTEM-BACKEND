@@ -7,7 +7,7 @@ from loans.models import Loan
 from users.utils import send_email
 from django.conf import settings
 from .reloan import process_reloan
-payment_url = f"{settings.FRONTEND_URL}/payments"
+payment_url = f"{settings.FRONTEND_URL}/dashboard/payments"
 
 class Command(BaseCommand):
     help = "Loan reminders and overdue processing"

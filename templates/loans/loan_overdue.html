@@ -1,13 +1,9 @@
 <!-- templates/emails/loan_overdue.html -->
-{% extends "emails/base.html" %}
+{% extends "emails/base.html" %} {% block content %}
 
-{% block content %}
+<div class="title" style="color: #b91c1c">Payment Overdue</div>
 
-<div class="title" style="color:#b91c1c;">Payment Overdue</div>
-
-<p class="text">
-  Dear {{ client_name }}, your loan payment is now overdue.
-</p>
+<p class="text">Dear {{ client_name }}, your loan payment is now overdue.</p>
 
 <div class="card">
   <div class="row">
@@ -17,12 +13,20 @@
 
   <div class="row">
     <span class="label">Due Date:</span>
-    <span class="value">  {{ due_date }}</span>
+    <span class="value"> {{ due_date }}</span>
   </div>
 
   <div class="row">
     <span class="label">Outstanding Balance:</span>
     <span class="value"> {{ balance }} RWF</span>
+  </div>
+  <div class="row">
+    <span class="label">Momo</span>
+    <span class="value">1429075</span>
+  </div>
+  <div class="row">
+    <span class="label">Name</span>
+    <span class="value">Kigali MicroLoans Ltd</span>
   </div>
 </div>
 
@@ -30,7 +34,7 @@
   Immediate action is required to avoid penalties or service interruption.
 </p>
 
-<a href="{{ payment_url }}" class="button" style="background:#dc2626;">
+<a href="{{ payment_url }}" class="button" style="background: #dc2626">
   Make Payment Now
 </a>
 

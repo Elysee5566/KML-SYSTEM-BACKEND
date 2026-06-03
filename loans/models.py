@@ -120,7 +120,7 @@ class Loan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        self.total_repayment = self.loan_amount + self.interest_amount
+        self.total_repayment = self.loan_amount + self.interest_amount + self.penalty_amount
 
         
 
