@@ -146,7 +146,7 @@ def public_application_handler(sender, instance, created, **kwargs):
     # =========================
     previous = getattr(instance, "_previous", None)
 
-    if not previous or previous.status == instance.status:
+    if not previous or previous.status == instance.status or instance.status == "reviewed":
         return
 
     templates = {
@@ -267,32 +267,32 @@ def loan_application_post_save(sender, instance, created, **kwargs):
     # =========================================
     # REVIEWED
     # =========================================
-    if instance.status == "reviewed":
+    # if instance.status == "reviewed":
 
-        print("SENDING REVIEWED EMAIL")
+    #     print("SENDING REVIEWED EMAIL")
 
-        if client and client.email:
-            send_email(
-                to_email=client.email,
-                subject="📋 Loan Application Reviewed",
-                template_name="loans/application_reviewed.html",
-                context=context,
-            )
+    #     if client and client.email:
+    #         send_email(
+    #             to_email=client.email,
+    #             subject="📋 Loan Application Reviewed",
+    #             template_name="loans/application_reviewed.html",
+    #             context=context,
+    #         )
 
     # =========================================
     # APPROVED
     # =========================================
-    elif instance.status == "approved":
+    # elif instance.status == "approved":
 
-        print("SENDING APPROVED EMAIL")
+    #     print("SENDING APPROVED EMAIL")
 
-        if client and client.email:
-            send_email(
-                to_email=client.email,
-                subject="✅ Loan Application Approved",
-                template_name="loans/application_approved.html",
-                context=context,
-            )
+    #     if client and client.email:
+    #         send_email(
+    #             to_email=client.email,
+    #             subject="✅ Loan Application Approved",
+    #             template_name="loans/application_approved.html",
+    #             context=context,
+    #         )
 
     # =========================================
     # REJECTED
