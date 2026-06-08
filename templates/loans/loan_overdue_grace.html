@@ -1,9 +1,13 @@
-<!-- templates/emails/loan_overdue.html -->
+<!-- templates/emails/loan_overdue_grace.html -->
+
 {% extends "emails/base.html" %} {% block content %}
 
-<div class="title" style="color: #b91c1c">Payment Overdue</div>
+<div class="title" style="color: #f59e0b">Grace Period Warning</div>
 
-<p class="text">Dear {{ client_name }}, your loan payment is now overdue.</p>
+<p class="text">
+  Dear {{ client_name }}, your loan payment is still overdue and is now within
+  the grace period.
+</p>
 
 <div class="card">
   <div class="row">
@@ -15,10 +19,17 @@
     <span class="label">Due Date:</span>
     <span class="value"> {{ due_date }}</span>
   </div>
+
   <div class="row">
-    <span class="label">Applied Penalty Balance:</span>
-    <span class="value"> {{ penalty }} RWF</span>
+    <span class="label">Grace Days Remaining:</span>
+    <span class="value"> {{ remaining_grace_days }} days</span>
   </div>
+
+  <!-- <div class="row">
+    <span class="label">Current Penalty:</span>
+    <span class="value"> {{ penalty }} RWF</span>
+  </div> -->
+
   <div class="row">
     <span class="label">Total Balance:</span>
     <span class="value"> {{ balance }} RWF</span>
@@ -28,6 +39,7 @@
     <span class="label">Momo:</span>
     <span class="value">1429075</span>
   </div>
+
   <div class="row">
     <span class="label">Name:</span>
     <span class="value">Kigali MicroLoans Ltd</span>
@@ -35,11 +47,12 @@
 </div>
 
 <p class="text">
-  Immediate action is required to avoid penalties or service interruption.
+  Please complete your payment before the grace period ends to avoid default
+  status and additional penalties.
 </p>
 
-<a href="{{ payment_url }}" class="button" style="background: #dc2626">
-  Make Payment Now
+<a href="{{ payment_url }}" class="button" style="background: #f59e0b">
+  Pay Now
 </a>
 
 {% endblock %}

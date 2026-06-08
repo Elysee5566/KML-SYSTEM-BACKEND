@@ -84,6 +84,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    # "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardResultsSetPagination",
+    # "PAGE_SIZE": 10,
 }
 
 SIMPLE_JWT = {
@@ -100,6 +102,8 @@ SIMPLE_JWT = {
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+# PAGINATION
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -142,8 +146,9 @@ CORS_ALLOW_METHODS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
+# TIME_ZONE = 'UTC'
+TIME_ZONE = "Africa/Kigali"
+USE_TZ = True
 USE_I18N = True
 
 USE_TZ = True

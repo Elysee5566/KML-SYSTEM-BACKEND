@@ -1,9 +1,13 @@
-<!-- templates/emails/loan_overdue.html -->
+<!-- templates/emails/loan_defaulted.html -->
+
 {% extends "emails/base.html" %} {% block content %}
 
-<div class="title" style="color: #b91c1c">Payment Overdue</div>
+<div class="title" style="color: #991b1b">Loan Default Notice</div>
 
-<p class="text">Dear {{ client_name }}, your loan payment is now overdue.</p>
+<p class="text">
+  Dear {{ client_name }}, your loan has been marked as DEFAULTED due to
+  non-payment after the grace period.
+</p>
 
 <div class="card">
   <div class="row">
@@ -15,12 +19,19 @@
     <span class="label">Due Date:</span>
     <span class="value"> {{ due_date }}</span>
   </div>
+
   <div class="row">
-    <span class="label">Applied Penalty Balance:</span>
+    <span class="label">Days Overdue:</span>
+    <span class="value"> {{ days_overdue }} days</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Penalty Balance:</span>
     <span class="value"> {{ penalty }} RWF</span>
   </div>
+
   <div class="row">
-    <span class="label">Total Balance:</span>
+    <span class="label">Total Outstanding Balance:</span>
     <span class="value"> {{ balance }} RWF</span>
   </div>
 
@@ -28,6 +39,7 @@
     <span class="label">Momo:</span>
     <span class="value">1429075</span>
   </div>
+
   <div class="row">
     <span class="label">Name:</span>
     <span class="value">Kigali MicroLoans Ltd</span>
@@ -35,11 +47,12 @@
 </div>
 
 <p class="text">
-  Immediate action is required to avoid penalties or service interruption.
+  This Loan is now under defaulted status. Please pay the Loan immediately to
+  avoid further legal or recovery actions.
 </p>
 
-<a href="{{ payment_url }}" class="button" style="background: #dc2626">
-  Make Payment Now
+<a href="{{ payment_url }}" class="button" style="background: #991b1b">
+  Settle Debt Now
 </a>
 
 {% endblock %}

@@ -62,7 +62,7 @@ from .utils import send_email
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import MeSerializer
-
+from core.pagination import StandardResultsSetPagination
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_email_otp(request):
@@ -222,7 +222,7 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        print("REQUEST DATA:", request.data)
+        # print("REQUEST DATA:", request.data)
 
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -290,7 +290,7 @@ class ChangePasswordView(APIView):
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all().order_by("-id")
     serializer_class = UserSerializer
-
+    pagination_class=StandardResultsSetPagination
     def get_permissions(self):
         user = self.request.user
 
@@ -319,6 +319,29 @@ class UserViewSet(ModelViewSet):
                 self.permission_denied(self.request, message="Not allowed")
 
         return [IsAuthenticated()]
+    def get_queryset(self):
+        queryset = User.objects.all().order_by("-date_joined")
+
+        search = self.request.query_params.get("search")
+        role = self.request.query_params.get("role")
+        two_fa = self.request.query_params.get("two_fa")
+
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(email__icontains=search)
+            )
+
+        if role and role != "all":
+            queryset = queryset.filter(role=role)
+
+        if two_fa == "enabled":
+            queryset = queryset.filter(is_2fa_enabled=True)
+
+        elif two_fa == "disabled":
+            queryset = queryset.filter(is_2fa_enabled=False)
+
+        return queryset
 
 
 import logging
@@ -494,12 +517,13 @@ class PasswordResetView(APIView):
             return Response({"success": False, "error": "Invalid token"})
 class AdminPasswordResetView(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     def get(self, request):
 
         if request.user.role not in ["admin", "manager"]:
             return Response({"error": "Unauthorized"}, status=403)
 
-        requests = PasswordResetRequest.objects.select_related("user").order_by("-created_at")
+        requests = PasswordResetRequest.objects.select_related("user").exclude(Q(status="EXPIRED")| Q(status="USED")).order_by("-created_at")
 
         data = [
             {
@@ -568,6 +592,7 @@ class AdminPasswordResetView(APIView):
             return Response({"error": "Invalid action"}, status=400)
 
         return Response({"success": True})
+
 class MeView(RetrieveUpdateAPIView):
     serializer_class = MeSerializer
     permission_classes = [IsAuthenticated]

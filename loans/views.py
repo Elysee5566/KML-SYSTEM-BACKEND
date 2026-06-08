@@ -52,8 +52,15 @@ from rest_framework.decorators import action
 import mimetypes
 from .models import PastLoanSheet
 from .serializers import PastLoanSheetSerializer
-
-
+from core.pagination import StandardResultsSetPagination
+import openpyxl
+from django.http import HttpResponse
+from django.db.models import Q
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from django.core.mail import EmailMessage
+from .models import Loan
+from django.conf import settings
 User=get_user_model()
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -130,9 +137,13 @@ class DashboardView(APIView):
             total_collected = payments.filter(status="approved").aggregate(
                 total=Sum("amount_paid")
             )["total"] or 0
+            total_balance = loans.aggregate(
+                total=Sum("remaining_balance")
+            )["total"] or 0
 
             pending_applications = applications.filter(status="pending").count()
             pending_payments = payments.filter(status="pending").count()
+            approved_payments = payments.filter(status="approved").count()
             overdue_schedules = schedules.filter(status="overdue").count()
 
             # ---------- CHARTS ----------
@@ -190,8 +201,10 @@ class DashboardView(APIView):
                     "paid_loans": paid_loans,
                     "total_disbursed": total_disbursed,
                     "total_collected": total_collected,
+                    "total_balance": total_balance,
                     "pending_applications": pending_applications,
                     "pending_payments": pending_payments,
+                    "approved_payments": approved_payments,
                     "overdue_schedules": overdue_schedules,
                 },
 
@@ -367,30 +380,210 @@ class LoanTypeViewSet(ModelViewSet):
             {"message": "Loan type deleted successfully"},
             status=204
         )
+
+
+
+from django.db.models import Q
+
 class LoanListView(generics.ListAPIView):
     serializer_class = LoanSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
+    pagination_class = StandardResultsSetPagination
+    def get_statistics_queryset(self):
         user = self.request.user
 
-        # ADMIN / MANAGER → see all loans
-        if user.role in ["admin", "manager"]:
-            return Loan.objects.select_related(
-                "client", "loan_type", "application"
-            ).prefetch_related("schedules", "payments").all()
+        queryset = Loan.objects.select_related(
+            "client",
+            "loan_type",
+            "application",
+        )
 
-        # CLIENT → see only their loans
         if user.role == "client":
-            return Loan.objects.select_related(
-                "client", "loan_type", "application"
-            ).prefetch_related("schedules", "payments").filter(
-                client__user=user
+            queryset = queryset.filter(client__user=user)
+
+        elif user.role not in ["admin", "manager"]:
+            return Loan.objects.none()
+
+        return queryset
+    def get_queryset(self):
+        queryset = self.get_statistics_queryset().prefetch_related(
+            "schedules",
+            "payments",
+        ).order_by("-created_at")
+
+        search = self.request.query_params.get("search")
+
+        if search:
+            queryset = queryset.filter(
+                Q(client__first_name__icontains=search)
+                | Q(client__last_name__icontains=search)
+                | Q(loan_type__name__icontains=search)
+                | Q(id__icontains=search)
             )
 
-        return Loan.objects.none()
+        status = self.request.query_params.get("status")
+
+        if status and status != "all":
+            queryset = queryset.filter(status=status)
+
+        from_date = self.request.query_params.get("from_date")
+
+        if from_date:
+            queryset = queryset.filter(created_at__date__gte=from_date)
+
+        to_date = self.request.query_params.get("to_date")
+
+        if to_date:
+            queryset = queryset.filter(created_at__date__lte=to_date)
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+
+    # Statistics (not affected by filters)
+        stats_queryset = self.get_statistics_queryset()
+
+        summary = stats_queryset.aggregate(
+            total_disbursed=Sum("loan_amount"),
+            total_balance=Sum("remaining_balance"),
+            total_loans=Count("id"),
+            overdue=Count("id", filter=Q(status="overdue")),
+            paid=Count("id", filter=Q(status="paid")),
+            active=Count("id", filter=Q(status="active")),
+        )
+
+        # Filtered table data
+        queryset = self.get_queryset()
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            self.paginator.extra_data = {
+                "summary": {
+                    "total_loans": summary["total_loans"],
+                    "total_disbursed": summary["total_disbursed"] or 0,
+                    "total_balance": summary["total_balance"] or 0,
+                    "overdue": summary["overdue"],
+                    "paid": summary["paid"],
+                    "active": summary["active"],
+                }
+            }
+
+            serializer = self.get_serializer(page, many=True)
+
+            return self.get_paginated_response(
+                serializer.data
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
+class ActiveLoanChoicesView(generics.ListAPIView):
+    serializer_class = LoanSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    pagination_class = None
+
+    def get_queryset(self):
+        return Loan.objects.filter(
+            client__user=self.request.user,
+            remaining_balance__gt=0
+        ).exclude(
+            status__in=["paid", "reloaned"]
+        )
 
 
+
+class ExportLoansView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        queryset = Loan.objects.select_related(
+            "client",
+            "loan_type",
+            "application",
+        ).order_by("-id")
+
+        if user.role == "client":
+            queryset = queryset.filter(client__user=user)
+
+        elif user.role not in ["admin", "manager"]:
+            return HttpResponse(status=403)
+
+        # SEARCH
+        search = request.query_params.get("search")
+
+        if search:
+            queryset = queryset.filter(
+                Q(client__first_name__icontains=search)
+                | Q(client__last_name__icontains=search)
+                | Q(loan_type__name__icontains=search)
+                | Q(id__icontains=search)
+            )
+
+        # STATUS
+        status = request.query_params.get("status")
+
+        if status and status != "all":
+            queryset = queryset.filter(status=status)
+
+        # DATES
+        from_date = request.query_params.get("from_date")
+
+        if from_date:
+            queryset = queryset.filter(created_at__date__gte=from_date)
+
+        to_date = request.query_params.get("to_date")
+
+        if to_date:
+            queryset = queryset.filter(created_at__date__lte=to_date)
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+
+        worksheet.title = "Loans"
+
+        worksheet.append([
+            "ID",
+            "Client",
+            "Loan Type",
+            "Amount",
+            "Interest",
+            "Total",
+            "Remaining",
+            "Due Date",
+            "Status",
+        ])
+
+        for loan in queryset:
+            worksheet.append([
+                loan.id,
+                loan.client.names,
+                loan.loan_type.name if loan.loan_type else "",
+                float(loan.loan_amount),
+                float(loan.interest_amount),
+                float(loan.total_repayment),
+                float(loan.remaining_balance),
+                loan.repayment_due_date.strftime("%Y-%m-%d")
+                if loan.repayment_due_date
+                else "",
+                loan.status,
+            ])
+        response = HttpResponse(
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            )
+        )
+
+        response[
+            "Content-Disposition"
+        ] = 'attachment; filename="loans.xlsx"'
+
+        workbook.save(response)
+
+        return response
 class CreateLoanView(generics.CreateAPIView):
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
@@ -443,6 +636,7 @@ class LoanViewSet(ModelViewSet):
 class AdminLoanApplicationViewSet(ModelViewSet):
     queryset = LoanApplication.objects.all().order_by("-created_at")
     serializer_class = AdminLoanApplicationSerializer
+    
     permission_classes = [IsAuthenticated, IsAdminOrManager]
     @action(detail=False, methods=["post"], url_path="create-manual")
     def create_manual(self, request):
@@ -476,19 +670,115 @@ class LoanApplicationViewSet(ModelViewSet):
     queryset = LoanApplication.objects.all().order_by("-created_at")
     serializer_class = LoanApplicationSerializer
     permission_classes = [IsAuthenticated]
-
-    # 🔐 Role-based filtering
-    def get_queryset(self):
+    pagination_class = StandardResultsSetPagination
+    def get_statistics_queryset(self):
         user = self.request.user
-        
-        if user.role in ['admin','manager']:
-            return LoanApplication.objects.all().order_by("-created_at")
+
+        if user.role in ["admin", "manager"]:
+            return LoanApplication.objects.select_related(
+                "client",
+                "loan_type"
+            )
+
         try:
-            client=Client.objects.get(user=user)
+            client = Client.objects.get(user=user)
         except Client.DoesNotExist:
             raise NotFound("User is not registered as a client")
 
-        return LoanApplication.objects.filter(client=client).order_by("-created_at")
+        return LoanApplication.objects.select_related(
+            "client",
+            "loan_type"
+        ).filter(client=client)
+    
+    # 🔐 Role-based filtering
+    def get_queryset(self):
+        queryset = self.get_statistics_queryset()
+        user = self.request.user
+
+        if user.role in ["admin", "manager"]:
+            queryset = LoanApplication.objects.select_related(
+                "client",
+                "loan_type"
+            ).exclude(status="approved").order_by("-created_at")
+
+        else:
+            try:
+                client = Client.objects.get(user=user)
+            except Client.DoesNotExist:
+                raise NotFound("User is not registered as a client")
+
+            queryset = LoanApplication.objects.select_related(
+                "client",
+                "loan_type"
+            ).filter(client=client).order_by("-created_at")
+
+        # SEARCH
+        search = self.request.query_params.get("search")
+
+        if search:
+            queryset = queryset.filter(
+                Q(client__names__icontains=search) |
+                Q(loan_type__name__icontains=search)
+            )
+
+        # STATUS FILTER
+        status = self.request.query_params.get("status")
+
+        if status and status != "all":
+            queryset = queryset.filter(status=status)
+
+        # SORTING
+        sort = self.request.query_params.get("sort")
+
+        if sort == "newest":
+            queryset = queryset.order_by("-created_at")
+
+        elif sort == "oldest":
+            queryset = queryset.order_by("created_at")
+
+        elif sort == "amount_high":
+            queryset = queryset.order_by("-requested_amount")
+
+        elif sort == "amount_low":
+            queryset = queryset.order_by("requested_amount")
+
+        return queryset
+    def list(self, request, *args, **kwargs):
+
+    # Statistics (NOT affected by filters)
+        stats = self.get_statistics_queryset().aggregate(
+            total_applications=Count("id"),
+            pending=Count("id", filter=Q(status="pending")),
+            reviewed=Count("id", filter=Q(status="reviewed")),
+            signed=Count("id", filter=Q(status="signed")),
+            approved=Count("id", filter=Q(status="approved")),
+            rejected=Count("id", filter=Q(status="rejected")),
+            total_requested=Sum("requested_amount"),
+        )
+
+        # Table data (affected by filters)
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            self.paginator.extra_data = {
+                "summary": {
+                    "total_applications": stats["total_applications"],
+                    "pending": stats["pending"],
+                    "reviewed": stats["reviewed"],
+                    "signed": stats["signed"],
+                    "approved": stats["approved"],
+                    "rejected": stats["rejected"],
+                    "total_requested": stats["total_requested"] or 0,
+                }
+            }
+
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     # ✅ CLIENT APPLIES
     def perform_create(self, serializer):
@@ -567,36 +857,37 @@ class LoanApplicationViewSet(ModelViewSet):
 
         application.contract = contract
         application.save()
+
         try:
-            client_email = application.client.email  # adjust if your relation is different
+            client_email = application.client.email or application.client.user.email
 
-            send_mail(
+            email = EmailMessage(
                 subject="Your Loan Contract Has Been Sent",
-                message=f"""
-                Dear {application.client.names},
+                body=f"""
+    Dear {application.client.names},
 
-                Your loan contract has been prepared and is now available.
+    Your loan contract has been prepared and is attached to this email.
 
-                Please check your account or contact us if you need assistance.
+    Please review, sign if required, and contact us if you need assistance.
 
-                Thank you,
-                Kigali MicroLoans Team
-                            """,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[client_email],
-                            fail_silently=False,
-                        )
+    Thank you,
+    Kigali MicroLoans Team
+                """,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[client_email],
+            )
+
+            # Attach uploaded contract
+            email.attach_file(application.contract.path)
+
+            email.send(fail_silently=False)
 
         except Exception as e:
-            # don't break upload if email fails
             print("Email sending failed:", str(e))
 
         return Response({
             "message": "Contract uploaded and email sent successfully"
         })
-        
-
-        return Response({"message": "Contract uploaded successfully"})
 
     # ✅ CLIENT SIGNS CONTRACT
     @action(detail=True, methods=["post"])
@@ -769,20 +1060,86 @@ class LoanApplicationViewSet(ModelViewSet):
             "message": "Application updated successfully"
         })
 class LoanPaymentViewSet(ModelViewSet):
-    queryset = LoanPayment.objects.all().order_by("-payment_date")
     serializer_class = LoanPaymentSerializer
     permission_classes = [IsAuthenticated]
-
-    # 🔐 ROLE-BASED ACCESS
-    def get_queryset(self):
+    pagination_class = StandardResultsSetPagination
+    def get_statistics_queryset(self):
         user = self.request.user
 
         if user.role in ["admin", "manager"]:
-            return LoanPayment.objects.select_related("loan").all().order_by("-payment_date")
+            return LoanPayment.objects.select_related("loan")
 
-        return LoanPayment.objects.select_related("loan").filter(
+        return LoanPayment.objects.select_related(
+            "loan"
+        ).filter(
             loan__client__user=user
-        ).order_by("-payment_date")
+        )
+    def get_queryset(self):
+        queryset = self.get_statistics_queryset().order_by(
+        "-payment_date"
+        )
+        user = self.request.user
+
+        if user.role in ["admin", "manager"]:
+            queryset = LoanPayment.objects.select_related(
+                "loan"
+            ).order_by("-payment_date")
+        else:
+            queryset = LoanPayment.objects.select_related(
+                "loan"
+            ).filter(
+                loan__client__user=user
+            ).order_by("-payment_date")
+
+        status = self.request.query_params.get("status")
+
+        if status and status != "all":
+            queryset = queryset.filter(status=status)
+
+        return queryset
+    def list(self, request, *args, **kwargs):
+
+        # Statistics (NOT affected by filters)
+        stats = self.get_statistics_queryset().aggregate(
+            total_paid=Sum(
+                "amount_paid",
+                filter=Q(status="approved")
+            ),
+            approved_count=Count(
+                "id",
+                filter=Q(status="approved")
+            ),
+            pending_count=Count(
+                "id",
+                filter=Q(status="pending")
+            ),
+        )
+
+        # Table data (affected by filters)
+        queryset = self.filter_queryset(
+            self.get_queryset()
+        )
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            self.paginator.extra_data = {
+                "summary": {
+                    "total_paid": stats["total_paid"] or 0,
+                    "approved_count": stats["approved_count"],
+                    "pending_count": stats["pending_count"],
+                }
+            }
+
+            serializer = self.get_serializer(page, many=True)
+
+            return self.get_paginated_response(
+                serializer.data
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
 
     # ✅ CLIENT CREATES PAYMENT (WITH PROOF)
     def perform_create(self, serializer):
@@ -985,6 +1342,7 @@ class PublicLoanApplicationViewSet(ModelViewSet):
     queryset = PublicLoanApplication.objects.all().order_by("-created_at")
     serializer_class = PublicLoanApplicationSerializer
     permission_classes = [AllowAny]
+    
 
     def get_queryset(self):
         # 🚫 Public users should NOT see all applications
@@ -992,10 +1350,52 @@ class PublicLoanApplicationViewSet(ModelViewSet):
             return super().get_queryset()
         return PublicLoanApplication.objects.none()
 class AdminPublicLoanApplicationViewSet(ModelViewSet):
-    queryset = PublicLoanApplication.objects.all().order_by("-created_at")
     serializer_class = PublicLoanApplicationSerializer
     permission_classes = [IsAdminOrManagerOrReadOnlyReviewer]
+    pagination_class = StandardResultsSetPagination
 
+    def get_statistics_queryset(self):
+        return PublicLoanApplication.objects.all()
+
+    def get_queryset(self):
+        queryset = PublicLoanApplication.objects.order_by("-created_at")
+
+        status = self.request.query_params.get("status")
+
+        if status and status != "all":
+            queryset = queryset.filter(status=status)
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        # Statistics (NOT affected by filters)
+        stats = self.get_statistics_queryset().aggregate(
+            total=Count("id"),
+            pending=Count("id", filter=Q(status="pending")),
+            reviewed=Count("id", filter=Q(status="reviewed")),
+            converted=Count("id", filter=Q(status="converted")),
+            rejected=Count("id", filter=Q(status="rejected")),
+        )
+
+        # Filtered table data
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            self.paginator.extra_data = {
+                "summary": stats
+            }
+
+            serializer = self.get_serializer(page, many=True)
+
+            return self.get_paginated_response(
+                serializer.data
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
     # =========================
     # UPDATE (Admin / Manager only)
     # =========================
