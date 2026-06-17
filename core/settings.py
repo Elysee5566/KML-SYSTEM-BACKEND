@@ -7,6 +7,7 @@ import certifi
 
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://system.kigalimicroloans.com")
+APP_URL=os.getenv("BACKEND_URL", "https://api.kigalimicroloans.com")
 # ssl._create_default_https_context = ssl.create_default_context(
 #     cafile=certifi.where()
 # )
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'applications',
     'loans',
     'payments',
+    'OnBoarding'
 ]
 
 MIDDLEWARE = [
@@ -96,24 +98,24 @@ SIMPLE_JWT = {
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-# PAGINATION
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'kigahnxu_kigali_microloans',
-        'USER': 'kigahnxu_admin',
-        'PASSWORD': 'Kigali@1Microloans',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# PAGINATION
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'kigahnxu_kigali_microloans',
+#         'USER': 'kigahnxu_admin',
+#         'PASSWORD': 'Kigali@1Microloans',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

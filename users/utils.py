@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
+from OnBoarding.views import get_onboarding_video_obj
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def get_staff_emails():
         )
         .exclude(email="")
         .filter(
-            Q(is_superuser=True) | Q(role__in=["manager"])
+            Q(is_superuser=True) | Q(role__in=["admin"])
         )
         .values_list("email", flat=True)
         .distinct()
@@ -63,18 +64,31 @@ def send_email(
         )
         return False
 def send_credentials_email(email, password):
+    video = get_onboarding_video_obj("login")
+
+    video_page_url = None
+    if video:
+        video_page_url = f"{settings.FRONTEND_URL}/video/{video.id}"
+
+    
+
     subject = "Your Kigali Microloans Account"
 
     html_content = render_to_string(
         "emails/credentials.html",
-        {"email": email, "password": password,"dashboard_url": f"{settings.FRONTEND_URL}/dashboard"},
+        {
+            "email": email,
+            "password": password,
+            "dashboard_url": f"{settings.FRONTEND_URL}/dashboard",
+            "video_url": video_page_url,
+        },
     )
 
     msg = EmailMultiAlternatives(
         subject,
         "",
         settings.DEFAULT_FROM_EMAIL,
-        [email]
+        [email],
     )
 
     msg.attach_alternative(html_content, "text/html")

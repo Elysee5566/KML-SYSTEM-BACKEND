@@ -1,0 +1,34 @@
+{% extends "emails/base.html" %} {% block content %}
+
+<div class="container">
+  <h2 class="rejected">Loan Pending Credit Reporting Review</h2>
+
+  <p>Hello,</p>
+
+  <p>
+    A loan account has exceeded the allowable default period and has been
+    automatically flagged for credit reporting review.
+  </p>
+
+  <p>
+    <strong>Loan ID:</strong> #{{ loan_id }}<br />
+    <strong>Client Name:</strong> {{ client_name }}<br />
+    <strong>Outstanding Balance:</strong> {{ amount }} RWF
+  </p>
+
+  <p>
+    Please review this account and verify that all reminders, penalties, and
+    internal procedures have been completed before proceeding with formal
+    reporting.
+  </p>
+
+  <p>
+    Once the review is complete, update the loan status accordingly through the
+    administration dashboard.
+  </p>
+
+  <p>
+    <a href="{{ dashboard_url }}" class="btn"> Review Loan </a>
+  </p>
+</div>
+{% endblock %}

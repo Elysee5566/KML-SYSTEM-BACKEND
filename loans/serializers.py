@@ -160,17 +160,35 @@ class LoanSerializer(serializers.ModelSerializer):
             # =========================
             today = timezone.now().date()
 
-            if instance.remaining_balance == 0:
-                instance.status = "paid"
+            new_status = validated_data.get("status")
 
-            elif instance.remaining_balance > 0 and instance.remaining_balance < instance.total_repayment:
-                instance.status = "in_payment"
-
-            elif instance.repayment_due_date and instance.repayment_due_date < today:
-                instance.status = "overdue"
-
+            if new_status:
+                instance.status = new_status
             else:
-                instance.status = "active"
+                manual_statuses = {
+                    "reported",
+                    "to_be_reported",
+                    "defaulted",
+                    "cancelled",
+                    "reloaned",
+                }
+
+                if instance.status not in manual_statuses:
+
+                    if instance.remaining_balance == 0:
+                        instance.status = "paid"
+
+                    elif instance.remaining_balance < instance.total_repayment:
+                        instance.status = "in_payment"
+
+                    elif (
+                        instance.repayment_due_date
+                        and instance.repayment_due_date < today
+                    ):
+                        instance.status = "overdue"
+
+                    else:
+                        instance.status = "active"
 
             instance.save()
             return instance

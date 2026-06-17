@@ -6,7 +6,7 @@ from django.conf import settings
 from users.utils import get_staff_emails
 from .models import Loan, PublicLoanApplication, LoanApplication,LoanPayment
 from users.utils import send_email
-
+from django.utils.timezone import now
 dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
 payment_url = f"{settings.FRONTEND_URL}/dashboard/payments"
 
@@ -81,7 +81,10 @@ def loan_post_save_handler(sender, instance, created, **kwargs):
         "dashboard_url": dashboard_url,
         "payment_url": payment_url,
     }
-
+    if instance.status =='reported':
+        context.update({
+            "reported_date":now().date
+        })
     templates = {
         "active": ("📌 Loan Activated", "loans/loan_activated.html"),
         "in_payment": ("💳 Loan In Payment", "loans/loan_activated.html"),
@@ -89,6 +92,7 @@ def loan_post_save_handler(sender, instance, created, **kwargs):
         "paid": ("✅ Loan Fully Repaid", "loans/loan_status_update.html"),
         "defaulted": ("🚨 Loan Default Notice", "loans/loan_overdue.html"),
         "reloaned": ("🔁 Loan Restructured", "loans/reloan.html"),
+        # "reported":("🚨🚨 Loan Reported Notice","loans/reported.html")
     }
 
     subject, template = templates.get(instance.status, (None, None))
@@ -356,7 +360,7 @@ def loan_payment_post_save(sender, instance, created, **kwargs):
         "client_name": getattr(client, "names", "Client"),
         "loan_id": loan.id,
         "payment_id": instance.id,
-        "amount_paid": f"{instance.amount_paid:,.0f}",
+        "amount_paid": instance.amount_paid,
         "payment_date": instance.payment_date,
         "reference": instance.reference,
         "status": instance.status,

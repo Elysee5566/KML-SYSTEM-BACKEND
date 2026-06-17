@@ -83,6 +83,8 @@ class Loan(models.Model):
         ('in_payment', 'In Payment Period'),
         ('overdue', 'Overdue'),
         ('defaulted', 'Defaulted'),
+        ('to_be_reported', 'To Be Reported'),
+        ('reported', 'Reported'),
         ('paid', 'Paid Off'),
         ('reloaned', 'Reloaned'),
         ('cancelled', 'Cancelled')
@@ -118,6 +120,7 @@ class Loan(models.Model):
     last_penalty_date = models.DateField(null=True, blank=True)  # prevents duplicate daily penalties
     overdue_notified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    defaulting_date=models.DateTimeField(null=True,blank=True)
 
     def save(self, *args, **kwargs):
         self.total_repayment = self.loan_amount + self.interest_amount + self.penalty_amount
@@ -166,6 +169,7 @@ class LoanPayment(models.Model):
 
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
     payment_proof = models.FileField(upload_to="payment_proofs/",null=True,blank=True)
+    name_of_paid=models.TextField(null=True,blank=True)
     rejection_reason = models.TextField(blank=True,null=True)
     payment_date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")

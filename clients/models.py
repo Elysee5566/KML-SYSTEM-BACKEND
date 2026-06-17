@@ -20,7 +20,7 @@ class Client(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=20)
 
-    id_document = models.FileField(upload_to="documents/id/",null=True,blank=True)
+    id_document = models.FileField(upload_to="documents/id/")
     job_contract = models.FileField(upload_to="documents/job/",null=True,blank=True)
     bank_statement = models.FileField(upload_to="documents/bank/",null=True,blank=True)
 

@@ -67,7 +67,7 @@ class DashboardView(APIView):
 
     def get(self, request):
         user = request.user
-        print(user)
+        # print(user)
         # =========================
         # 📅 FILTERS (SMART DEFAULT)
         # =========================
@@ -914,10 +914,10 @@ class LoanApplicationViewSet(ModelViewSet):
                 status=400
             )
         file = request.FILES.get("file")
-        print(request.FILES)
-        print("FILES:", request.FILES)
-        print("DATA:", request.data)
-        print("CONTENT TYPE:", request.content_type)
+        # print(request.FILES)
+        # print("FILES:", request.FILES)
+        # print("DATA:", request.data)
+        # print("CONTENT TYPE:", request.content_type)
 
         if not file:
             return Response({"error": "Signed file is required"}, status=400)
@@ -1189,7 +1189,7 @@ class LoanPaymentViewSet(ModelViewSet):
         if user.role not in ["admin", "manager", "client"]:
             return Response({"error": "Not allowed"}, status=403)
 
-        if user.role == "client" and payment.loan.user != user:
+        if user.role == "client" and payment.loan.client.user != user:
             return Response({"error": "Not your payment"}, status=403)
 
         # =========================
@@ -1219,6 +1219,8 @@ class LoanPaymentViewSet(ModelViewSet):
             # update proof
             if "payment_proof" in request.FILES:
                 payment.payment_proof = request.FILES["payment_proof"]
+            if "name_of_paid" in request.data:
+                payment.name_of_paid=request.data.get("name_of_paid")
 
             payment.save()
 

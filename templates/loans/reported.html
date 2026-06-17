@@ -1,0 +1,56 @@
+{% extends "emails/base.html" %} {% block content %}
+
+<div class="container">
+  <h2 class="alert">Loan Reporting Confirmation</h2>
+
+  <p>Hi {{ name }},</p>
+
+  <p>
+    This is to inform you that your loan account has been formally
+    <strong>reported to the relevant credit reporting authorities</strong>
+    following prolonged non-payment and the completion of our internal review
+    process.
+  </p>
+
+  <p>The details of the reported loan are as follows:</p>
+
+  <p>
+    <strong>Loan Reference:</strong> #{{ loan_id }}<br />
+    <strong>Outstanding Balance:</strong> {{ amount }} RWF<br />
+    <strong>Date Reported:</strong> {{ reported_date }}
+  </p>
+
+  <p>
+    Please note that this reporting may affect your eligibility for future
+    credit facilities and other financial services until the outstanding
+    obligations have been addressed in accordance with applicable regulations.
+  </p>
+
+  <p>
+    We encourage you to contact us as soon as possible to discuss repayment and
+    the steps required to regularize your account status.
+  </p>
+
+  {% if support_email %}
+
+  <p>
+    Email:
+    <span class="highlight">{{ support_email }}</span>
+  </p>
+  {% endif %}
+
+  <p>
+    Phone:
+    <span class="highlight">+250-786-907-897</span>
+  </p>
+
+  <p>
+    <a href="{{ dashboard_url }}" class="btn"> View Loan Details </a>
+  </p>
+
+  <p style="margin-top: 30px; font-size: 13px; color: #6b7280">
+    If you believe this reporting was made in error, please contact our support
+    team immediately so that the matter can be reviewed.
+  </p>
+</div>
+{% endblock %}

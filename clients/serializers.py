@@ -22,17 +22,20 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = "__all__"
-    def get_user_details(self, obj):
-        if obj.user:
-            return {
-                "email": obj.user.email,
-                "username": obj.user.username,
-                "role": obj.user.role,
-            }
-        return {}
+
+    def get_fields(self):
+        fields = super().get_fields()
+
+        request = self.context.get("request")
+
+        if request and request.method in ["PATCH", "PUT"]:
+            # Make files optional on update
+            fields["id_document"].required = False
+            fields["job_contract"].required = False
+            fields["bank_statement"].required = False
+
+        return fields
     
-
-
 class CreateClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client

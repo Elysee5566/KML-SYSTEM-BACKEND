@@ -14,7 +14,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/clients/", include("clients.urls")),
     path("api/loans/", include("loans.urls")),
-    path("api/users/", include("users.urls"))
+    path("api/users/", include("users.urls")),
+    path("api/onboarding/",include("OnBoarding.urls"))
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 schema_view = get_schema_view(
     openapi.Info(
