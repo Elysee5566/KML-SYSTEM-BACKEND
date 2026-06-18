@@ -1,13 +1,9 @@
 <!-- templates/emails/loan_status_update.html -->
-{% extends "emails/base.html" %}
-
-{% block content %}
+{% extends "emails/base.html" %} {% block content %}
 
 <div class="title">Loan Status Update</div>
 
-<p class="text">
-  Hello {{ client_name }}, your loan status has been updated.
-</p>
+<p class="text">Hello {{ client_name }}, your loan status has been updated.</p>
 
 <div class="card">
   <div class="row">
@@ -26,12 +22,31 @@
   </div>
 </div>
 
-<p class="text">
-  Stay on track to maintain a strong credit profile.
-</p>
+<p class="text">Stay on track to maintain a strong credit profile.</p>
 
-<a href="{{ dashboard_url }}" class="button">
-  View Loan Details
-</a>
+<a href="{{ dashboard_url }}" class="button"> View Loan Details </a>
+{% if video_url %}
+<div style="margin-top: 20px">
+  <h3 style="font-size: 16px; color: #333">🎬 Getting Started Guide</h3>
 
-{% endblock %}
+  <p style="font-size: 14px; color: #555">
+    Watch this short onboarding video to learn how to use your account.
+  </p>
+
+  <a
+    href="{{ video_url }}"
+    target="_blank"
+    style="
+      display: inline-block;
+      padding: 10px 15px;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+    "
+  >
+    ▶ Watch Getting Started Video
+  </a>
+</div>
+{% endif %} {% endblock %}

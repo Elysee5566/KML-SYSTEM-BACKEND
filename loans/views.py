@@ -61,6 +61,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.mail import EmailMessage
 from .models import Loan
 from django.conf import settings
+from SystemSettings.models import SystemSetting
 User=get_user_model()
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -783,7 +784,6 @@ class LoanApplicationViewSet(ModelViewSet):
     # ✅ CLIENT APPLIES
     def perform_create(self, serializer):
         user = self.request.user
-
         try:
             client = Client.objects.get(user=user)
         except Client.DoesNotExist:
@@ -857,7 +857,7 @@ class LoanApplicationViewSet(ModelViewSet):
 
         application.contract = contract
         application.save()
-
+        
         try:
             client_email = application.client.email or application.client.user.email
 
@@ -1059,6 +1059,22 @@ class LoanApplicationViewSet(ModelViewSet):
         return Response({
             "message": "Application updated successfully"
         })
+    from rest_framework.response import Response
+    from rest_framework import status
+
+    def create(self, request, *args, **kwargs):
+        settings, _ = SystemSetting.objects.get_or_create(pk=1)
+
+        if not settings.loan_application_enabled:
+            return Response(
+                {
+                    "detail": settings.loan_application_message,
+                    "maintenance": True,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return super().create(request, *args, **kwargs)
 class LoanPaymentViewSet(ModelViewSet):
     serializer_class = LoanPaymentSerializer
     permission_classes = [IsAuthenticated]
@@ -1351,6 +1367,22 @@ class PublicLoanApplicationViewSet(ModelViewSet):
         if self.request.user.role in ['admin','manager','reviewer']:
             return super().get_queryset()
         return PublicLoanApplication.objects.none()
+    from rest_framework.response import Response
+    from rest_framework import status
+
+    def create(self, request, *args, **kwargs):
+        settings, _ = SystemSetting.objects.get_or_create(pk=1)
+
+        if not settings.loan_application_enabled:
+            return Response(
+                {
+                    "detail": settings.loan_application_message,
+                    "maintenance": True,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return super().create(request, *args, **kwargs)
 class AdminPublicLoanApplicationViewSet(ModelViewSet):
     serializer_class = PublicLoanApplicationSerializer
     permission_classes = [IsAdminOrManagerOrReadOnlyReviewer]

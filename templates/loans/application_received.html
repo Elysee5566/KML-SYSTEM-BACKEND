@@ -1,51 +1,66 @@
-{% extends "emails/base.html" %}
-
-{% block content %}
+{% extends "emails/base.html" %} {% block content %}
 <div class="container">
-
   <h2 class="reviewed">Loan Application Received</h2>
 
-  
-
   {% if role == "client" %}
-    <!-- CLIENT MESSAGE -->
-     <p>Hi {{ name }},</p>
-    <p>
-      We have successfully received your loan application of 
-      <strong>{{ amount }} RWF</strong> for 
-      <strong>{{ loan_type }}</strong>.
-    </p>
+  <!-- CLIENT MESSAGE -->
+  <p>Hi {{ name }},</p>
+  <p>
+    We have successfully received your loan application of
+    <strong>{{ amount }} RWF</strong> for <strong>{{ loan_type }}</strong>.
+  </p>
 
-    <p>Our team will review your application and get back to you shortly.</p>
+  <p>Our team will review your application and get back to you shortly.</p>
 
-    <p>You can track your application progress here:</p>
-    <p>
-      <a href="{{ dashboard_url }}" class="btn">Go to Dashboard</a>
-    </p>
+  <p>You can track your application progress here:</p>
+  <p>
+    <a href="{{ dashboard_url }}" class="btn">Go to Dashboard</a>
+  </p>
 
-    <p class="footer">
-      If you did not submit this application, please contact support immediately.
-    </p>
+  <p class="footer">
+    If you did not submit this application, please contact support immediately.
+  </p>
 
   {% elif role == "staff" %}
-    <!-- STAFF MESSAGE -->
-    <p>
-      A new loan application has been submitted.
+  <!-- STAFF MESSAGE -->
+  <p>A new loan application has been submitted.</p>
+
+  <p>
+    <strong>Applicant:</strong> {{ name }} <br />
+    <strong>Amount:</strong> {{ amount }} RWF <br />
+    <strong>Loan Type:</strong> {{ loan_type }}
+  </p>
+
+  <p>Please review this application in the admin dashboard:</p>
+
+  <p>
+    <a href="{{ dashboard_url }}" class="btn">Review Application</a>
+  </p>
+
+  {% endif %} {% if video_url %}
+  <div style="margin-top: 20px">
+    <h3 style="font-size: 16px; color: #333">🎬 Getting Started Guide</h3>
+
+    <p style="font-size: 14px; color: #555">
+      Watch this short onboarding video to learn how to use your account.
     </p>
 
-    <p>
-      <strong>Applicant:</strong> {{ name }} <br />
-      <strong>Amount:</strong> {{ amount }} RWF <br />
-      <strong>Loan Type:</strong> {{ loan_type }}
-    </p>
-
-    <p>Please review this application in the admin dashboard:</p>
-
-    <p>
-      <a href="{{ dashboard_url }}" class="btn">Review Application</a>
-    </p>
-
+    <a
+      href="{{ video_url }}"
+      target="_blank"
+      style="
+        display: inline-block;
+        padding: 10px 15px;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+      "
+    >
+      ▶ Watch Getting Started Video
+    </a>
+  </div>
   {% endif %}
-
 </div>
 {% endblock %}

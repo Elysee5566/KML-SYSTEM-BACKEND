@@ -1,11 +1,42 @@
-{% extends "emails/base.html" %}
+{% extends "emails/base.html" %} {% block content %}
+<div class="container">
+  <h2 class="converted">Loan Application Approved!</h2>
+  <p>Hi {{ name }},</p>
+  <p>
+    Congratulations! Your loan application of
+    <strong>{{ amount }} RWF</strong> for <strong>{{ loan_type }}</strong> has
+    been <strong>approved</strong> and you are now registered as a client.
+  </p>
+  <p>
+    Access your client dashboard using the credentials you received to view your
+    loan application details and wait to sign the agreements and repayment
+    schedule
+  </p>
+  <p><a href="{{ dashboard_url }}" class="btn">Go to Dashboard</a></p>
+  {% if video_url %}
+  <div style="margin-top: 20px">
+    <h3 style="font-size: 16px; color: #333">🎬 Getting Started Guide</h3>
 
-{% block content %}
- <div class="container">
-    <h2 class="converted">Loan Application Approved!</h2>
-    <p>Hi {{ name }},</p>
-    <p>Congratulations! Your loan application of <strong>{{ amount }} RWF</strong> for <strong>{{ loan_type }}</strong> has been <strong>approved</strong> and you are now registered as a client.</p>
-    <p>Access your client dashboard using the credentials you received to view your loan application details and wait to sign the agreements and repayment schedule</p>
-    <p><a href="{{ dashboard_url }}" class="btn">Go to Dashboard</a></p>
+    <p style="font-size: 14px; color: #555">
+      Watch this short onboarding video to learn how to use your account.
+    </p>
+
+    <a
+      href="{{ video_url }}"
+      target="_blank"
+      style="
+        display: inline-block;
+        padding: 10px 15px;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+      "
+    >
+      ▶ Watch Getting Started Video
+    </a>
   </div>
+  {% endif %}
+</div>
 {% endblock %}

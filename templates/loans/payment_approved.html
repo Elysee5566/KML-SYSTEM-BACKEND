@@ -1,33 +1,48 @@
-{% extends "emails/base.html" %}
-
-{% block content %}
+{% extends "emails/base.html" %} {% block content %}
 
 <div class="container">
-    <h2 class="approved">Payment Approved</h2>
-<p>Hi {{ client_name }},</p>
+  <h2 class="approved">Payment Approved</h2>
+  <p>Hi {{ client_name }},</p>
 
-<p>
-    Your payment of <strong>{{ amount_paid }} RWF</strong>
-    for Loan <strong>#{{ loan_id }}</strong>
-    has been <strong>approved</strong>.
-</p>
+  <p>
+    Your payment of <strong>{{ amount_paid }} RWF</strong> for Loan
+    <strong>#{{ loan_id }}</strong> has been <strong>approved</strong>.
+  </p>
 
-{% if reference %}
-<p>
-    Payment Reference: <strong>{{ reference }}</strong>
-</p>
-{% endif %}
+  {% if reference %}
+  <p>Payment Reference: <strong>{{ reference }}</strong></p>
+  {% endif %}
 
-<p>
-    Thank you for keeping up with your loan repayments.
-</p>
+  <p>Thank you for keeping up with your loan repayments.</p>
 
-<p>
-    <a href="{{ payment_url }}" class="btn">
-        View Payment Status
+  <p>
+    <a href="{{ payment_url }}" class="btn"> View Payment Status </a>
+  </p>
+
+  {% if video_url %}
+  <div style="margin-top: 20px">
+    <h3 style="font-size: 16px; color: #333">🎬 Getting Started Guide</h3>
+
+    <p style="font-size: 14px; color: #555">
+      Watch this short onboarding video to learn how to use your account.
+    </p>
+
+    <a
+      href="{{ video_url }}"
+      target="_blank"
+      style="
+        display: inline-block;
+        padding: 10px 15px;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+      "
+    >
+      ▶ Watch Getting Started Video
     </a>
-</p>
-
-
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

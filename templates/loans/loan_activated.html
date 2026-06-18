@@ -1,16 +1,14 @@
 <!-- templates/emails/loan_disbursed.html -->
-{% extends "emails/base.html" %}
-
-{% block content %}
+{% extends "emails/base.html" %} {% block content %}
 
 <div class="title">Loan Disbursed Successfully</div>
 
-{% if role ==='client' %}<p class="text">
+{% if role ==='client' %}
+<p class="text">
   Congratulations {{ client_name }}, your loan is in Payment mode.
 </p>
-{% elif role ==='staff' %}
-New Loan of {{ client_name }} is updated to in Payment mode
-{% endif %}
+{% elif role ==='staff' %} New Loan of {{ client_name }} is updated to in
+Payment mode {% endif %}
 
 <div class="card">
   <div class="row">
@@ -29,12 +27,31 @@ New Loan of {{ client_name }} is updated to in Payment mode
   </div>
 </div>
 
-<p class="text">
-  Please ensure timely repayment to build your credit history.
-</p>
+<p class="text">Please ensure timely repayment to build your credit history.</p>
 
-<a href="{{ dashboard_url }}" class="button">
-  View Loan
-</a>
+<a href="{{ dashboard_url }}" class="button"> View Loan </a>
+{% if video_url %}
+<div style="margin-top: 20px">
+  <h3 style="font-size: 16px; color: #333">🎬 Getting Started Guide</h3>
 
-{% endblock %}
+  <p style="font-size: 14px; color: #555">
+    Watch this short onboarding video to learn how to use your account.
+  </p>
+
+  <a
+    href="{{ video_url }}"
+    target="_blank"
+    style="
+      display: inline-block;
+      padding: 10px 15px;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+    "
+  >
+    ▶ Watch Getting Started Video
+  </a>
+</div>
+{% endif %} {% endblock %}

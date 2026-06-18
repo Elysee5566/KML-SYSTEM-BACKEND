@@ -75,7 +75,7 @@ class LoanApplication(models.Model):
     signed_contract=models.FileField(upload_to="signed_contract/",null=True,blank=True)
     is_signed = models.BooleanField(default=False)
     signed_at = models.DateTimeField(null=True, blank=True)
-
+    
     created_at = models.DateTimeField(auto_now_add=True)
 class Loan(models.Model):
     STATUS_CHOICES = (

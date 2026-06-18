@@ -7,6 +7,7 @@ from users.utils import get_staff_emails
 from .models import Loan, PublicLoanApplication, LoanApplication,LoanPayment
 from users.utils import send_email
 from django.utils.timezone import now
+from OnBoarding.views import get_onboarding_video_obj
 dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
 payment_url = f"{settings.FRONTEND_URL}/dashboard/payments"
 
@@ -30,6 +31,7 @@ def loan_post_save_handler(sender, instance, created, **kwargs):
     # 🆕 NEW LOAN (DISBURSED)
     # =========================
     if created:
+        video=get_onboarding_video_obj("application")
         if client and client.email:
             send_email(
                 to_email=client.email,
@@ -44,6 +46,7 @@ def loan_post_save_handler(sender, instance, created, **kwargs):
                     "dashboard_url": dashboard_url,
                     "role":"client",
                     "payment_url": payment_url,
+                    "video_url":video
                 },
             )
             send_email(
@@ -117,6 +120,10 @@ def public_application_handler(sender, instance, created, **kwargs):
     # 🆕 NEW APPLICATION
     # =========================
     if created:
+        video=get_onboarding_video_obj("application")
+        video_page_url = None
+        if video:
+            video_page_url = f"{settings.FRONTEND_URL}/video/{video.id}"
         if instance.email:
             send_email(
                 to_email=instance.email,
@@ -129,6 +136,7 @@ def public_application_handler(sender, instance, created, **kwargs):
                     "amount": f"{instance.requested_amount:,.0f}",
                     "loan_type": instance.loan_type.name if instance.loan_type else "N/A",
                     "dashboard_url": dashboard_url,
+                    "video_url":video_page_url
                 },
             )
             send_email(
@@ -374,7 +382,10 @@ def loan_payment_post_save(sender, instance, created, **kwargs):
     if created:
 
         print("NEW PAYMENT CREATED")
-
+        video=get_onboarding_video_obj("application")
+        video_page_url = None
+        if video:
+            video_page_url = f"{settings.FRONTEND_URL}/video/{video.id}"
         # CLIENT EMAIL
         if client and client.email:
             send_email(
@@ -384,6 +395,7 @@ def loan_payment_post_save(sender, instance, created, **kwargs):
                 context={
                     **context,
                     "role": "client",
+                    "video_url":video_page_url
                 },
             )
 
