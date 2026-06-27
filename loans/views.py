@@ -416,8 +416,7 @@ class LoanListView(generics.ListAPIView):
 
         if search:
             queryset = queryset.filter(
-                Q(client__first_name__icontains=search)
-                | Q(client__last_name__icontains=search)
+                Q(client__names__icontains=search)
                 | Q(loan_type__name__icontains=search)
                 | Q(id__icontains=search)
             )
