@@ -70,7 +70,7 @@ class LoanPaymentSerializer(serializers.ModelSerializer):
     loan_id = serializers.PrimaryKeyRelatedField(
         queryset=Loan.objects.all(),
         source="loan",
-        write_only=True
+        write_only=True,
     )
 
     loan = serializers.SerializerMethodField(read_only=True)
@@ -84,9 +84,25 @@ class LoanPaymentSerializer(serializers.ModelSerializer):
             "id": obj.loan.id,
             "reference": str(obj.loan),
             "remaining_balance": obj.loan.remaining_balance,
+            "total_repayment": obj.loan.total_repayment,
+            "loan_amount": obj.loan.loan_amount,
+            "interest_amount": obj.loan.interest_amount,
+            "penalty_amount": obj.loan.penalty_amount,
+            "status": obj.loan.status,
+            "client": ClientSummarySerializer(obj.loan.client).data,
         }
 
-
+class ClientSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = [
+            "id",
+            "names",
+            "phone",
+            "email",
+            "id_number",
+            # "address",
+        ]
 class LoanSerializer(serializers.ModelSerializer):
     client_names = serializers.CharField(source="client.names", read_only=True)
     loan_type_name = serializers.CharField(source="loan_type.name", read_only=True)

@@ -1090,26 +1090,34 @@ class LoanPaymentViewSet(ModelViewSet):
             loan__client__user=user
         )
     def get_queryset(self):
-        queryset = self.get_statistics_queryset().order_by(
-        "-payment_date"
-        )
         user = self.request.user
 
         if user.role in ["admin", "manager"]:
             queryset = LoanPayment.objects.select_related(
-                "loan"
+                "loan", "loan__client"
             ).order_by("-payment_date")
         else:
             queryset = LoanPayment.objects.select_related(
-                "loan"
+                "loan", "loan__client"
             ).filter(
                 loan__client__user=user
             ).order_by("-payment_date")
 
         status = self.request.query_params.get("status")
 
-        if status and status != "all":
-            queryset = queryset.filter(status=status)
+        if status:
+            if status == "all":
+                # Show everything, including rejected
+                pass
+            elif status == "rejected":
+                # Only rejected payments
+                queryset = queryset.filter(status="rejected")
+            else:
+                # Any other specific status
+                queryset = queryset.filter(status=status)
+        else:
+            # Default: hide rejected payments
+            queryset = queryset.exclude(status="rejected")
 
         return queryset
     def list(self, request, *args, **kwargs):
@@ -1128,6 +1136,10 @@ class LoanPaymentViewSet(ModelViewSet):
                 "id",
                 filter=Q(status="pending")
             ),
+            rejected_count=Count(
+                "id",
+                filter=Q(status="rejected")
+            ),
         )
 
         # Table data (affected by filters)
@@ -1143,6 +1155,7 @@ class LoanPaymentViewSet(ModelViewSet):
                     "total_paid": stats["total_paid"] or 0,
                     "approved_count": stats["approved_count"],
                     "pending_count": stats["pending_count"],
+                    "rejected_count": stats["rejected_count"],
                 }
             }
 
