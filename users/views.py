@@ -320,7 +320,11 @@ class UserViewSet(ModelViewSet):
 
         return [IsAuthenticated()]
     def get_queryset(self):
-        queryset = User.objects.all().order_by("-date_joined")
+        queryset = (
+            User.objects
+            .select_related("client")
+            .order_by("-date_joined")
+        )
 
         search = self.request.query_params.get("search")
         role = self.request.query_params.get("role")

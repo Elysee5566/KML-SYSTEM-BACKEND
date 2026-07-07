@@ -3,10 +3,12 @@ from django.contrib.auth import get_user_model
 import random, string
 from .models import PasswordResetRequest
 from django.contrib.auth import authenticate
+from clients.models import Client
 User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
 from django.utils.crypto import get_random_string
 from django.db import transaction
+from clients.serializers import ClientSerializer
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -58,15 +60,22 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
-
+    client = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ["id", "username", "email", "role","is_2fa_enabled", "password","phone_number","id_card","full_name"]
+        fields = ["id", "username", "email", "role","is_2fa_enabled", "password","phone_number","id_card","full_name","client"]
 
     # 🔐 secure generator
     def generate_password(self):
         return get_random_string(10)
+    def get_client(self, obj):
+        if obj.role == "client":
+            try:
+                return ClientSerializer(obj.client).data
+            except Client.DoesNotExist:
+                return None
 
+        return None
     # ✅ basic validation
     def validate(self, data):
         if self.instance and self.partial:
