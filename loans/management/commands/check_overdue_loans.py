@@ -7,6 +7,8 @@ from loans.models import Loan
 from loans.management.commands.reloan import process_reloan
 from users.utils import send_email
 from users.models import User
+from datetime import datetime
+from decimal import Decimal
 payment_url = f"{settings.FRONTEND_URL}/dashboard/payments"
 
 
@@ -20,7 +22,7 @@ class Command(BaseCommand):
             "client",
             "loan_type",
         ).filter(
-            status__in=["active", "in_payment", "overdue", "defaulted"]
+            status__in=["active", "in_payment", "overdue","reloaned", "defaulted","to_be_reported","reported",]
         )
 
         stats = {
@@ -32,6 +34,11 @@ class Command(BaseCommand):
         }
 
         for loan in loans:
+            # Skip fully paid loans
+            if loan.remaining_balance <= Decimal("0.00"):
+                # Optional: keep status consistent
+                
+                continue
             due_date = loan.repayment_due_date
 
             grace_days = loan.loan_type.grace_period_days
@@ -47,11 +54,24 @@ class Command(BaseCommand):
             context = {
                 "client_name": loan.client.names,
                 "loan_id": loan.id,
+                "loan_taken":loan.loan_amount,
+                "loan_interest":loan.interest_amount,
                 "due_date": due_date,
                 "last_payment_date": last_payment_date,
                 "payment_url": payment_url,
             }
+            
+            # Process reloan if eligible
+            if (
+                loan.is_eligible_for_reloan()
+                and loan.status != "reloaned"
+            ):
+                process_reloan(loan)
+                stats["reloaned"] += 1
 
+                loan.save()
+
+                continue
             # ==========================================
             # 5 DAYS BEFORE DUE DATE
             # ==========================================
@@ -102,17 +122,7 @@ class Command(BaseCommand):
                 if loan.status != "overdue":
                     loan.status = "overdue"
 
-                # Process reloan if eligible
-                if (
-                    loan.is_eligible_for_reloan()
-                    and loan.status != "reloaned"
-                ):
-                    process_reloan(loan)
-                    stats["reloaned"] += 1
-
-                    loan.save()
-
-                    continue
+                
 
                 # Send reminder once per day
                 if (
@@ -149,7 +159,7 @@ class Command(BaseCommand):
             # ==========================================
             if days_overdue > grace_days:
 
-                if loan.status not in {"defaulted", "to_be_reported", "reported"}:
+                if loan.status not in {"defaulted", "to_be_reported", "reported","reloaned","in_payment"}:
                     loan.status = "defaulted"
                     if not loan.defaulting_date:
                         loan.defaulting_date = today
@@ -206,9 +216,15 @@ class Command(BaseCommand):
                     loan.status in ["defaulted","to_be_reported"]
                     and loan.defaulting_date
                 ):
-                    days_in_default = (
-                        today - loan.defaulting_date
-                    ).days
+                    # print(f"Loan ID: {loan.id}")
+                    # print(type(loan.defaulting_date))
+                    # print(repr(loan.defaulting_date))
+                    defaulting_date = loan.defaulting_date
+
+                    if isinstance(defaulting_date, datetime):
+                        defaulting_date = defaulting_date.date()
+                    
+                    days_in_default = (today - defaulting_date).days
 
                     if days_in_default >= 30:
                         loan.status = "to_be_reported"

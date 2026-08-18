@@ -338,7 +338,26 @@ class AdminLoanApplicationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Amount must be between {loan_type.min_amount} and {loan_type.max_amount}"
             )
+        allowed_previous_statuses = [
+            "paid",
+            "reloaned",
+            "cancelled",
+        ]
 
+        has_unpaid_loan = Loan.objects.filter(
+            client=client
+        ).exclude(
+            status__in=allowed_previous_statuses
+        ).exists()
+
+        if has_unpaid_loan:
+            raise serializers.ValidationError({
+                "client": (
+                    "This client already has an unpaid loan. "
+                    "The existing loan must be completed before "
+                    "applying for another loan."
+                )
+            })
         # duplicate check
         if LoanApplication.objects.filter(
             client=client,

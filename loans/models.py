@@ -1,6 +1,7 @@
 from django.db import models
 from clients.models import Client
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 User = get_user_model()
 class LoanType(models.Model):
     PERIOD_UNIT = (
@@ -129,8 +130,12 @@ class Loan(models.Model):
 
         super().save(*args, **kwargs)
     def is_eligible_for_reloan(self):
+        today = timezone.now().date()
         paid_amount = self.total_repayment - self.remaining_balance
-        return paid_amount >= self.interest_amount
+        return (
+            self.repayment_due_date <= today
+            and paid_amount >= self.interest_amount
+        )
     def __str__(self):
         return f"Loan #{self.id} - {self.client}"
 class RepaymentSchedule(models.Model):

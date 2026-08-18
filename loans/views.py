@@ -83,20 +83,22 @@ class DashboardView(APIView):
         today = timezone.now().date()
 
         # ✅ Default: last 30 days
-        if not start_date and not end_date:
-            end_date = today
-            start_date = today - timedelta(days=30)
+        # if not start_date and not end_date:
+        #     end_date = today
+        #     start_date = today - timedelta(days=30)
 
         # =========================
         # 🔐 BASE QUERYSETS
         # =========================
         if user.role in ["admin", "manager"]:
             loans = Loan.objects.all()
+            print("Total Loans",loans.count())
             applications = LoanApplication.objects.all()
             payments = LoanPayment.objects.all()
             schedules = RepaymentSchedule.objects.all()
         else:
             loans = Loan.objects.filter(client__user=user)
+            print("Total User Loans",loans.count())
             applications = LoanApplication.objects.filter(client__user=user)
             payments = LoanPayment.objects.filter(loan__client__user=user)
             schedules = RepaymentSchedule.objects.filter(loan__client__user=user)
@@ -123,6 +125,7 @@ class DashboardView(APIView):
         # =========================
         # 👑 ADMIN / MANAGER VIEW
         # =========================
+        
         if user.role in ["admin", "manager"]:
 
             # ---------- KPIs ----------
@@ -130,7 +133,7 @@ class DashboardView(APIView):
             active_loans = loans.filter(status="active").count()
             overdue_loans = loans.filter(status="overdue").count()
             paid_loans = loans.filter(status="paid").count()
-
+            
             total_disbursed = loans.aggregate(
                 total=Sum("loan_amount")
             )["total"] or 0
@@ -141,7 +144,7 @@ class DashboardView(APIView):
             total_balance = loans.aggregate(
                 total=Sum("remaining_balance")
             )["total"] or 0
-
+            print("Total Loans",total_loans)
             pending_applications = applications.filter(status="pending").count()
             pending_payments = payments.filter(status="pending").count()
             approved_payments = payments.filter(status="approved").count()
