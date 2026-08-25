@@ -35,9 +35,15 @@ class Command(BaseCommand):
 
         for loan in loans:
             # Skip fully paid loans
-            if loan.remaining_balance <= Decimal("0.00"):
-                # Optional: keep status consistent
-                
+            # ==========================================
+            # MARK LOAN AS PAID
+            # ==========================================
+            if (
+                loan.remaining_balance <= Decimal("0.00")
+                and loan.status != "paid"
+            ):
+                loan.status = "paid"
+                loan.save(update_fields=["status"])
                 continue
             due_date = loan.repayment_due_date
 
@@ -174,11 +180,13 @@ class Command(BaseCommand):
                 # Apply penalty once per day
                 if loan.last_penalty_date != today:
 
-                    penalty = (
-                        loan.remaining_balance
-                        * penalty_rate
-                    )
-
+                    # penalty = (
+                    #     loan.remaining_balance
+                    #     * penalty_rate
+                    # )
+                    # Updating Penalty Calculations to late payment interes Which will be always calculated by principal * interest/30
+                    interest_rate=(loan.loan_type.interest_rate /100)
+                    penalty=(loan.loan_amount * interest_rate/30)
                     loan.penalty_amount += penalty
 
                     loan.remaining_balance += penalty
