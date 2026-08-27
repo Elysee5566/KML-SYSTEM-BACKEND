@@ -184,12 +184,36 @@ class Command(BaseCommand):
                     #     loan.remaining_balance
                     #     * penalty_rate
                     # )
-                    # Updating Penalty Calculations to late payment interes Which will be always calculated by principal * interest/30
-                    interest_rate=(loan.loan_type.interest_rate /100)
-                    penalty=(loan.loan_amount * interest_rate/30)
-                    loan.penalty_amount += penalty
+                    # Calculate daily late-payment interest based on
+                    # the loan type's repayment duration.
 
-                    loan.remaining_balance += penalty
+                    interest_rate = loan.loan_type.interest_rate / Decimal("100")
+
+                    duration_value = loan.loan_type.repayment_period_value
+                    duration_unit = loan.loan_type.repayment_period_unit
+
+                    if duration_unit == "days":
+                        duration_days = duration_value
+
+                    elif duration_unit == "weeks":
+                        duration_days = duration_value * 7
+
+                    elif duration_unit == "months":
+                        duration_days = duration_value * 30
+
+                    else:
+                        raise ValueError(
+                            f"Unsupported repayment period unit: {duration_unit}"
+                        )
+
+                    daily_late_interest = (
+                        loan.loan_amount
+                        * interest_rate
+                        / Decimal(duration_days)
+                    )
+
+                    loan.penalty_amount += daily_late_interest
+                    loan.remaining_balance += daily_late_interest
 
                     loan.last_penalty_date = today
 

@@ -636,6 +636,21 @@ class LoanViewSet(ModelViewSet):
         serializer.save()
 
         return Response(serializer.data)
+    def destroy(self, request, *args, **kwargs):
+    # 🔒 Only admins can delete loans
+        if request.user.role != "admin":
+            return Response(
+                {"error": "Only administrators can delete loans"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        loan = self.get_object()
+        loan.delete()
+
+        return Response(
+            {"message": "Loan deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 class AdminLoanApplicationViewSet(ModelViewSet):
     queryset = LoanApplication.objects.all().order_by("-created_at")
     serializer_class = AdminLoanApplicationSerializer
@@ -785,25 +800,39 @@ class LoanApplicationViewSet(ModelViewSet):
 
     # ✅ CLIENT APPLIES
     def perform_create(self, serializer):
+        print("Performing creating new Loan")
         user = self.request.user
+
         try:
             client = Client.objects.get(user=user)
         except Client.DoesNotExist:
+            print("Client Does Not exist")
             raise NotFound("Client does not exist")
 
-        # ✅ Check for existing unpaid loans
+        blocking_statuses = [
+            "active",
+            "in_payment",
+            "overdue",
+            "defaulted",
+            "to_be_reported",
+            "reported",
+        ]
+
         has_unpaid_loan = Loan.objects.filter(
-            client=client
-        ).exclude(status='paid').exists()
+            client=client,
+            status__in=blocking_statuses
+        ).exists()
 
         if has_unpaid_loan:
-            raise ValidationError("You already have an active/unpaid loan")
+            raise ValidationError(
+                "You already have an active/unpaid loan"
+            )
 
         serializer.save(
             client=client,
             status="pending"
         )
-
+    
     # ✅ ADMIN REVIEW (APPROVE / REJECT)
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrManager])
     def review(self, request, pk=None):
