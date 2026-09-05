@@ -1,5 +1,7 @@
 from datetime import timedelta
+import logging
 
+logger = logging.getLogger(__name__)
 def calculate_due_date(start_date, value, unit):
     if unit == "days":
         return start_date + timedelta(days=value)
@@ -24,3 +26,16 @@ def get_installments(period_value, period_unit, frequency):
 
     elif frequency == "monthly":
         return total_days // 30
+def check_sending_emails_allowed():
+    from SystemSettings.models import SystemSetting  # adjust import if needed
+    try:
+        system_setting = SystemSetting.objects.first()
+        if system_setting and not system_setting.allow_sending_emails:
+            return False
+    except Exception as e:
+        logger.error(
+            f"Could not check SystemSetting for email sending | "
+            f"error={str(e)}"
+        )
+        return False
+    return True

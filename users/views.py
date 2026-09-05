@@ -105,7 +105,7 @@ def send_email_otp(request):
 
         if not sent:
             return Response(
-                {"success": False, "error": "Failed to send email"},
+                {"success": False, "error": "Failed to send email OTP. Please try again later."},
                 status=500
             )
 

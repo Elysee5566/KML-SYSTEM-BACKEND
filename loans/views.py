@@ -61,7 +61,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.mail import EmailMessage
 from .models import Loan
 from django.conf import settings
-from SystemSettings.models import SystemSetting
+from loans.utils import check_sending_emails_allowed
 User=get_user_model()
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -891,24 +891,28 @@ class LoanApplicationViewSet(ModelViewSet):
         
         try:
             client_email = application.client.email or application.client.user.email
-
+            
+            if not check_sending_emails_allowed():
+                return Response({
+                    "message": "Contract uploaded successfully, but email sending is disabled."
+                })
             email = EmailMessage(
-                subject="Your Loan Contract Has Been Sent",
-                body=f"""
-    Dear {application.client.names},
-
-    Your loan contract has been prepared and is attached to this email.
-
-    Please review, sign if required, and contact us if you need assistance.
-
-    Thank you,
-    Kigali MicroLoans Team
-                """,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[client_email],
-            )
-
-            # Attach uploaded contract
+                            subject="Your Loan Contract Has Been Sent",
+                            body=f"""
+                            Dear {application.client.names},
+                        
+                            Your loan contract has been prepared and is attached to this email.
+                        
+                            Please review, sign if required, and contact us if you need assistance.
+                        
+                            Thank you,
+                            Kigali MicroLoans Team
+                                        """,
+                                        from_email=settings.DEFAULT_FROM_EMAIL,
+                                        to=[client_email],
+                                    )
+            
+                        # Attach uploaded contract
             email.attach_file(application.contract.path)
 
             email.send(fail_silently=False)
@@ -1011,6 +1015,12 @@ class LoanApplicationViewSet(ModelViewSet):
 
                 application.status = "approved"
                 application.save(update_fields=["status"])
+                if not check_sending_emails_allowed():
+                    return Response({
+                        "message": "Loan created successfully, but email sending is disabled.",
+                        "loan_id": loan.id
+                    })
+                # Send email to client
                 try:
                     send_mail(
                     subject="Your Loan Has been approved",
@@ -1027,8 +1037,8 @@ class LoanApplicationViewSet(ModelViewSet):
                                 from_email=settings.DEFAULT_FROM_EMAIL,
                                 recipient_list=[application.client.email],
                                 fail_silently=False,
-                            )
-
+                                            )
+                
                 except Exception as e:
                     # don't break upload if email fails
                     print("Email sending failed:", str(e))

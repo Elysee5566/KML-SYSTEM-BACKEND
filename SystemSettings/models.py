@@ -5,6 +5,7 @@ class SystemSetting(models.Model):
     loan_application_message = models.TextField(
         default="Loan applications are temporarily unavailable. Please try again later."
     )
+    allow_sending_emails = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         self.pk = 1  # Ensure only one settings record

@@ -9,4 +9,6 @@ class SystemSettingSerializer(serializers.ModelSerializer):
         fields = [
             "loan_application_enabled",
             "loan_application_message",
+            "allow_sending_emails"
+            
         ]

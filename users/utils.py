@@ -7,7 +7,11 @@ from django.conf import settings
 from OnBoarding.views import get_onboarding_video_obj
 import logging
 
+from SystemSettings.models import SystemSetting  # adjust import if needed
+
+
 logger = logging.getLogger(__name__)
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
@@ -26,6 +30,9 @@ def get_staff_emails():
         .values_list("email", flat=True)
         .distinct()
     )
+
+
+
 def send_email(
     to_email,
     subject,
@@ -35,8 +42,26 @@ def send_email(
 ):
     context = context or {}
 
+    # Check global email setting
     try:
-        # ✅ normalize recipients
+        system_setting = SystemSetting.objects.first()
+
+        if system_setting and not system_setting.allow_sending_emails:
+            logger.info(
+                f"Email skipped because email sending is disabled | "
+                f"to={to_email} | subject={subject}"
+            )
+            return False
+
+    except Exception as e:
+        logger.error(
+            f"Could not check SystemSetting before sending email | "
+            f"error={str(e)}"
+        )
+        return False
+
+    try:
+        # Normalize recipients
         if isinstance(to_email, str):
             to_email = [to_email]
 
@@ -50,11 +75,15 @@ def send_email(
             subject=subject,
             body=text_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=to_email,  # ✅ FIXED
+            to=to_email,
         )
 
         msg.attach_alternative(html_content, "text/html")
         msg.send()
+
+        logger.info(
+            f"Email sent successfully | to={to_email} | subject={subject}"
+        )
 
         return True
 
