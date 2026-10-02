@@ -22,7 +22,7 @@ class Command(BaseCommand):
             "client",
             "loan_type",
         ).filter(
-            status__in=["active", "in_payment", "overdue","reloaned", "defaulted","to_be_reported","reported",]
+            status__in=["active", "in_payment", "overdue","reloaned", "defaulted","to_be_reported","reported","paid"]
         )
 
         stats = {
@@ -68,6 +68,7 @@ class Command(BaseCommand):
             }
             
             # Process reloan if eligible
+            print("Eligible for reloan:",loan, loan.is_eligible_for_reloan())
             if (
                 loan.is_eligible_for_reloan()
                 and loan.status != "reloaned"

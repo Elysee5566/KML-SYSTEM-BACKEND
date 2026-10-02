@@ -13,10 +13,6 @@ def process_reloan(loan: Loan):
     new_principal = loan.remaining_balance
     interest_rate = loan.loan_type.interest_rate / 100
     new_interest = new_principal * interest_rate
-
-    from datetime import timedelta
-    from django.utils.timezone import now
-
     new_due_date = now().date() + timedelta(
         days=loan.loan_type.repayment_period_value
     )
@@ -34,7 +30,7 @@ def process_reloan(loan: Loan):
     )
 
     loan.status = "reloaned"
-    loan.remaining_balance = 0
+    # loan.remaining_balance = 0
     loan.save()
 
     # ✅ Send email

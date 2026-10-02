@@ -62,6 +62,7 @@ from django.core.mail import EmailMessage
 from .models import Loan
 from django.conf import settings
 from loans.utils import check_sending_emails_allowed
+from SystemSettings.models import SystemSetting
 User=get_user_model()
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -516,15 +517,22 @@ class ExportLoansView(APIView):
             return HttpResponse(status=403)
 
         # SEARCH
-        search = request.query_params.get("search")
+        # SEARCH
+        search = request.query_params.get("search", "").strip()
+
+        print("SEARCH:", search)
+        print("BEFORE SEARCH:", queryset.count())
 
         if search:
             queryset = queryset.filter(
-                Q(client__first_name__icontains=search)
-                | Q(client__last_name__icontains=search)
+                Q(client__names__icontains=search)
+                | Q(client__user__first_name__icontains=search)
+                | Q(client__user__last_name__icontains=search)
                 | Q(loan_type__name__icontains=search)
                 | Q(id__icontains=search)
             )
+
+        print("AFTER SEARCH:", queryset.count())
 
         # STATUS
         status = request.query_params.get("status")
@@ -555,6 +563,7 @@ class ExportLoansView(APIView):
             "Interest",
             "Total",
             "Remaining",
+            "Disbursement Date",
             "Due Date",
             "Status",
         ])
@@ -568,6 +577,7 @@ class ExportLoansView(APIView):
                 float(loan.interest_amount),
                 float(loan.total_repayment),
                 float(loan.remaining_balance),
+                loan.disbursement_date.strftime("%Y-%m-%d") if loan.disbursement_date else "",
                 loan.repayment_due_date.strftime("%Y-%m-%d")
                 if loan.repayment_due_date
                 else "",
@@ -1323,93 +1333,122 @@ class LoanPaymentViewSet(ModelViewSet):
 
         return Response({"message": "Payment cancelled successfully"})
     # ✅ ADMIN REVIEW (APPROVE / REJECT)
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrManager])
+    @action(
+    detail=True,
+    methods=["post"],
+    permission_classes=[IsAdminOrManager],
+    )
     def review(self, request, pk=None):
         payment = self.get_object()
+
         action_type = request.data.get("action")
 
         if payment.status != "pending":
             return Response(
                 {"error": "Payment already processed"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ❌ REJECT
+        # REJECT
         if action_type == "reject":
             payment.status = "rejected"
             payment.reviewed_by = request.user
-            payment.save()
+            payment.rejection_reason = request.data.get(
+                "reason",
+                ""
+            )
 
-            return Response({"message": "Payment rejected"})
+            payment.save(
+                update_fields=[
+                    "status",
+                    "reviewed_by",
+                    "rejection_reason",
+                ]
+            )
 
-        # ✅ APPROVE
+            return Response({
+                "message": "Payment rejected"
+            })
+
+        # APPROVE
         if action_type == "approve":
-            loan = payment.loan
-
-            if loan.remaining_balance <= 0:
-                return Response({"error": "Loan already paid"}, status=400)
-
-            if payment.amount_paid > loan.remaining_balance:
-                return Response(
-                    {"error": "Amount exceeds remaining loan balance"},
-                    status=400
-                )
 
             try:
                 with transaction.atomic():
 
-                    schedules = loan.schedules.filter(
-                        status="pending"
-                    ).order_by("due_date")
+                    loan = (
+                        Loan.objects
+                        .select_for_update()
+                        .get(pk=payment.loan_id)
+                    )
 
-                    remaining_amount = Decimal(payment.amount_paid)
+                    if loan.remaining_balance <= 0:
+                        return Response(
+                            {"error": "Loan already paid"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
-                    for schedule in schedules:
+                    if payment.amount_paid <= 0:
+                        return Response(
+                            {"error": "Payment amount must be greater than zero"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
-                        if remaining_amount <= 0:
-                            break
+                    if payment.amount_paid > loan.remaining_balance:
+                        return Response(
+                            {
+                                "error": (
+                                    "Amount exceeds remaining loan balance"
+                                )
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
-                        schedule_remaining = schedule.total_amount - schedule.paid_amount
-
-                        # FULL PAYMENT
-                        if remaining_amount >= schedule_remaining:
-                            schedule.paid_amount += schedule_remaining
-                            schedule.status = "paid"
-                            remaining_amount -= schedule_remaining
-
-                        # PARTIAL PAYMENT
-                        else:
-                            schedule.paid_amount += remaining_amount
-                            remaining_amount = Decimal("0.00")
-
-                        schedule.save()
-
-                    # 🔥 Update Loan Balance
+                    # Deduct payment
                     loan.remaining_balance -= payment.amount_paid
 
-                    # 🔥 Update Loan Status
                     if loan.remaining_balance <= 0:
-                        loan.status = "paid"
                         loan.remaining_balance = Decimal("0.00")
+                        loan.status = "paid"
                     else:
                         loan.status = "in_payment"
 
-                    loan.save()
+                    loan.save(
+                        update_fields=[
+                            "remaining_balance",
+                            "status",
+                        ]
+                    )
 
-                    # ✅ Mark payment approved
+                    # Approve payment
                     payment.status = "approved"
                     payment.reviewed_by = request.user
-                    payment.save()
+
+                    payment.save(
+                        update_fields=[
+                            "status",
+                            "reviewed_by",
+                        ]
+                    )
+
+                return Response({
+                    "message": "Payment approved and applied successfully"
+                })
 
             except Exception as e:
                 return Response(
-                    {"error": f"Payment processing failed: {str(e)}"},
-                    status=400
+                    {
+                        "error": (
+                            f"Payment processing failed: {str(e)}"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            return Response({"message": "Payment approved and applied successfully"})
-
-        return Response({"error": "Invalid action"}, status=400)
+        return Response(
+            {"error": "Invalid action"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 class PublicLoanApplicationViewSet(ModelViewSet):
     queryset = PublicLoanApplication.objects.all().order_by("-created_at")
     serializer_class = PublicLoanApplicationSerializer
