@@ -99,7 +99,7 @@ class DashboardView(APIView):
             schedules = RepaymentSchedule.objects.all()
         else:
             loans = Loan.objects.filter(client__user=user)
-            print("Total User Loans",loans.count())
+            # print("Total User Loans",loans.count())
             applications = LoanApplication.objects.filter(client__user=user)
             payments = LoanPayment.objects.filter(loan__client__user=user)
             schedules = RepaymentSchedule.objects.filter(loan__client__user=user)

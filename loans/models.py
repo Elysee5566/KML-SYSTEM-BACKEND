@@ -131,11 +131,19 @@ class Loan(models.Model):
         super().save(*args, **kwargs)
     def is_eligible_for_reloan(self):
         today = timezone.now().date()
+
+        if self.status in ["reloaned", "cancelled","paid"]:
+            return False
+
+        if self.repayment_due_date > today:
+            return False
+
+        if self.remaining_balance <= 0:
+            return False
+
         paid_amount = self.total_repayment - self.remaining_balance
-        return (
-            self.repayment_due_date <= today
-            and paid_amount >= self.interest_amount
-        )
+
+        return paid_amount >= self.interest_amount
     def __str__(self):
         return f"Loan #{self.id} - {self.client}"
 class RepaymentSchedule(models.Model):

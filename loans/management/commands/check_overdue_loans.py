@@ -22,7 +22,7 @@ class Command(BaseCommand):
             "client",
             "loan_type",
         ).filter(
-            status__in=["active", "in_payment", "overdue","reloaned", "defaulted","to_be_reported","reported","paid"]
+            status__in=["active", "in_payment", "overdue", "defaulted","to_be_reported","reported"]
         )
 
         stats = {
@@ -40,7 +40,7 @@ class Command(BaseCommand):
             # ==========================================
             if (
                 loan.remaining_balance <= Decimal("0.00")
-                and loan.status != "paid"
+                and (loan.status != "paid" or loan.status != "reloaned")
             ):
                 loan.status = "paid"
                 loan.save(update_fields=["status"])
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             }
             
             # Process reloan if eligible
-            print("Eligible for reloan:",loan, loan.is_eligible_for_reloan())
+            # print("Eligible for reloan:",loan, loan.is_eligible_for_reloan())
             if (
                 loan.is_eligible_for_reloan()
                 and loan.status != "reloaned"
