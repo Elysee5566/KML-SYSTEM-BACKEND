@@ -44,20 +44,46 @@ class Command(BaseCommand):
         db_host = db.get("HOST") or "localhost"
         db_port = str(db.get("PORT") or "3306")
 
+        
         # ==========================================================
         # MYSQLDUMP COMMAND
         # ==========================================================
+
+        import shutil
+
+        mysqldump_path = shutil.which("mysqldump")
+
+        # Windows XAMPP fallback
+        if not mysqldump_path and os.name == "nt":
+            possible_paths = [
+                r"C:\xampp\mysql\bin\mysqldump.exe",
+            ]
+
+            for path in possible_paths:
+                if os.path.isfile(path):
+                    mysqldump_path = path
+                    break
+
+        if not mysqldump_path:
+            raise CommandError(
+                "mysqldump was not found. Please ensure it is "
+                "installed and available in the server PATH."
+            )
+
         command = [
-            "mysqldump",
+            mysqldump_path,
             f"--host={db_host}",
             f"--port={db_port}",
             f"--user={db_user}",
-            f"--password={db_password}",
             "--single-transaction",
             "--routines",
             "--triggers",
             db_name,
         ]
+
+        env = os.environ.copy()
+        env["MYSQL_PWD"] = db_password
+
 
         # ==========================================================
         # CREATE BACKUP

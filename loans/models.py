@@ -124,9 +124,21 @@ class Loan(models.Model):
     defaulting_date=models.DateTimeField(null=True,blank=True)
 
     def save(self, *args, **kwargs):
-        self.total_repayment = self.loan_amount + self.interest_amount + self.penalty_amount
+        update_fields = kwargs.get("update_fields")
 
-        
+        if self._state.adding:
+            self.total_repayment = (
+                self.loan_amount
+                + self.interest_amount
+                + self.penalty_amount
+            )
+
+        elif update_fields is None:
+            self.total_repayment = (
+                self.loan_amount
+                + self.interest_amount
+                + self.penalty_amount
+            )
 
         super().save(*args, **kwargs)
     def is_eligible_for_reloan(self):
