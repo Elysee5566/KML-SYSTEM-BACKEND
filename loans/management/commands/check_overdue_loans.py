@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import now
-
+from datetime import datetime
 from loans.models import Loan
 from loans.management.commands.reloan import process_reloan
 from users.models import User
@@ -373,9 +373,12 @@ class Command(BaseCommand):
                                 loan.status == "defaulted"
                                 and loan.defaulting_date
                             ):
-                                days_in_default = (
-                                    today - loan.defaulting_date
-                                ).days
+                                defaulting_date = loan.defaulting_date
+
+                                if isinstance(defaulting_date, datetime):
+                                    defaulting_date = defaulting_date.date()
+
+                                days_in_default = (today - defaulting_date).days
 
                                 if days_in_default >= 30:
                                     loan.status = "to_be_reported"

@@ -74,7 +74,7 @@ def process_reloan(loan: Loan):
         loan_amount=new_principal,
         interest_amount=new_interest,
         remaining_balance=new_principal + new_interest,
-        disbursement_date=timezone.now().date(),
+        disbursement_date=loan.disbursement_date,
         repayment_due_date=new_due_date,
         status="active",
     )
